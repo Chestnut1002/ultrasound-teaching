@@ -1,0 +1,21 @@
+{
+  "name": "ultrasound-teaching",
+  "version": "1.0.0",
+  "description": "超声教学资源管理系统 — 内置于彩超工作站的医学教学课件浏览与播放应用",
+  "main": "main.js",
+  "scripts": {
+    "start": "bash start.sh",
+    "build": "electron-builder"
+  },
+  "keywords": [
+    "ultrasound",
+    "teaching",
+    "medical",
+    "electron"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.2.1"
+  }
+}
