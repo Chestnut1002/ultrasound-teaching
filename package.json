@@ -15,7 +15,30 @@
   ],
   "author": "",
   "license": "MIT",
+  "build": {
+    "appId": "com.ultrasound.teaching",
+    "productName": "超声教学资源管理系统",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "docs/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": null
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}.${ext}"
+    }
+  },
   "devDependencies": {
-    "electron": "^33.2.1"
+    "electron": "^33.2.1",
+    "electron-builder": "^26.15.3"
   }
 }

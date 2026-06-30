@@ -87,8 +87,8 @@
 - [x] 验证：所有状态 UI 正常，动画流畅 ✅
 
 ## 步骤 9：打包 + GitHub（待网络条件允许时处理）
-- [ ] 安装 electron-builder，配置 build 字段
-- [ ] 打包为 Windows 便携版 .exe
+- [x] 安装 electron-builder，配置 build 字段
+- [x] 打包为 Windows 便携版 .exe
 - [ ] 准备应用图标（assets/icon.ico）
 - [ ] 在无 Node.js 的电脑上测试 .exe 运行
 - [ ] git init + GitHub 仓库创建 + 首次推送
