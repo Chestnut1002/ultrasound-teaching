@@ -94,3 +94,15 @@
 - [ ] git init + GitHub 仓库创建 + 首次推送
 - [ ] README 完善（中英双语、截图、使用说明）
 - [ ] 验证：.exe 双击即运行，无需安装/管理员权限；GitHub 仓库完整
+
+## ✅ 步骤 10：内容隔离管理系统
+- [x] main.js：新增 5 个课件管理 IPC handler（get-courseware-path / ensure-dir / delete-item / import-files / show-open-dialog）+ 路径安全校验
+- [x] main.js：移除 get-drives IPC handler（不再浏览全盘）
+- [x] preload.js：替换 API（-getDrives +5 管理 API）
+- [x] index.html CSS：新增管理面板、登录弹窗、拖拽区、按钮样式（约 200 行）
+- [x] index.html HTML：侧边栏改为课件目录树 + 顶部栏齿轮图标 + 管理员登录/面板浮层
+- [x] FileBrowser 模块重写：盘符列表移除 → 课件文件夹树（懒加载 + 展开/折叠）+ 相对路径面包屑
+- [x] Admin 模块新增：密码登录、文件拖拽导入、按钮导入、新建文件夹、删除管理（约 250 行）
+- [x] App 模块更新：初始化流程（Admin→FileBrowser）、Backspace 限制 courseware 根、收藏/最近过滤无效路径
+- [x] 文档同步：tech.md / requirements.md / steps.md / .gitignore 更新
+- [x] 验证：npm start → 只显示 courseware 目录 → 齿轮图标管理入口正常

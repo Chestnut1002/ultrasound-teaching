@@ -34,10 +34,11 @@ Node.js 环境      ←→  Chromium 浏览器环境
 ```js
 const U = { ... };           // 工具函数
 const Store = { ... };       // localStorage 操作
-const FileBrowser = { ... }; // 文件浏览逻辑
+const FileBrowser = { ... }; // 文件浏览逻辑（课件目录树）
 const VideoPlayer = { ... }; // 视频播放器
 const ImageViewer = { ... }; // 图片查看器
 const DocViewer = { ... };   // 文档查看器
+const Admin = { ... };       // 管理员：登录、导入、删除、文件夹管理
 const App = { ... };         // 主控制器
 ```
 
@@ -48,8 +49,22 @@ const App = { ... };         // 主控制器
 |-----|------|------|
 | `ultrasound_favorites` | `[{ path, name, addedAt }]` | 收藏夹 |
 | `ultrasound_recent` | `[{ path, name, openedAt }]` | 最近打开（最多50条） |
-| `ultrasound_settings` | `{ viewMode, sortBy, defaultPath }` | 用户设置 |
+| `ultrasound_settings` | `{ viewMode, sortBy, lastCwFolder }` | 用户设置 |
+| `ultrasound_admin_pwd` | `string` | 管理员密码（默认 admin123） |
+| `ultrasound_cw_path` | `string` | courseware 路径缓存 |
 | `ultrasound_progress` | `{ [filePath]: { position, completed, updatedAt } }` | 播放进度（未来） |
+
+### IPC 接口一览
+| IPC Channel | 方向 | 说明 |
+|-------------|------|------|
+| `read-dir` | 渲染→主 | 读取目录内容 |
+| `path-exists` | 渲染→主 | 检查路径是否存在 |
+| `open-external` | 渲染→主 | 系统默认程序打开文件 |
+| `get-courseware-path` | 渲染→主 | 获取/创建 courseware 目录 |
+| `ensure-dir` | 渲染→主 | 在 courseware 内创建目录 |
+| `delete-item` | 渲染→主 | 删除 courseware 内文件/文件夹 |
+| `import-files` | 渲染→主 | 导入文件到 courseware |
+| `show-open-dialog` | 渲染→主 | 系统文件/文件夹选择对话框 |
 
 ### IPC 文件数据结构
 ```js
@@ -73,6 +88,7 @@ ultrasound-teaching/
 ├── preload.js           # 安全桥接层
 ├── index.html           # 全部 UI（单文件）
 ├── assets/              # 静态资源
+├── courseware/          # 课件资源库（不纳入版本控制）
 ├── docs/                # 项目文档
 └── devlog/              # 开发日志
 ```

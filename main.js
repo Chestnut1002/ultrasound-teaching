@@ -1,10 +1,32 @@
 // main.js — Electron 主进程
 // 负责：创建窗口、IPC 通信、自定义协议、文件系统访问
 
-const { app, BrowserWindow, ipcMain, protocol, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { Readable } = require('stream');
+
+// ==================== 课件根目录 ====================
+// 开发模式：项目根目录下的 courseware/；打包模式：.exe 同级目录下的 courseware/
+let coursewarePath;
+function getCoursewarePath() {
+  if (!coursewarePath) {
+    coursewarePath = path.join(
+      app.isPackaged ? path.dirname(process.execPath) : __dirname,
+      'courseware'
+    );
+    fs.mkdirSync(coursewarePath, { recursive: true });
+  }
+  return coursewarePath;
+}
+
+// ==================== 安全校验 ====================
+// 确保操作目标在 courseware 目录内，防止越权访问系统文件
+function isPathWithinCourseware(targetPath) {
+  const normalized = path.resolve(targetPath);
+  const cw = path.resolve(getCoursewarePath());
+  return normalized.startsWith(cw) && normalized !== cw;
+}
 
 let mainWindow;
 
@@ -47,6 +69,35 @@ function formatSize(bytes) {
   return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
 }
 
+// 递归复制目录
+function copyDirSync(src, dest) {
+  fs.mkdirSync(dest, { recursive: true });
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+// 递归统计文件数量
+function countFiles(dirPath) {
+  let count = 0;
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      count += countFiles(path.join(dirPath, entry.name));
+    } else {
+      count++;
+    }
+  }
+  return count;
+}
+
 // ==================== 注册 IPC 处理器 ====================
 function registerIpcHandlers() {
   ipcMain.handle('read-dir', async (_event, dirPath) => {
@@ -80,24 +131,107 @@ function registerIpcHandlers() {
 
   ipcMain.handle('path-exists', async (_event, p) => fs.existsSync(p));
 
-  ipcMain.handle('get-drives', async () => {
+  ipcMain.handle('open-external', async (_event, filePath) => {
     try {
-      const drives = [];
-      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-      for (const letter of letters) {
-        const p = letter + ':\\';
-        if (fs.existsSync(p)) drives.push({ name: letter + ' 盘', path: p });
-      }
-      return { success: true, data: drives };
+      shell.openPath(filePath);
+      return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
     }
   });
 
-  ipcMain.handle('open-external', async (_event, filePath) => {
+  // ==================== 课件管理 API ====================
+  // 获取 courseware 路径
+  ipcMain.handle('get-courseware-path', async () => {
     try {
-      shell.openPath(filePath);
+      const cwPath = getCoursewarePath();
+      return { success: true, path: cwPath };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 在 courseware 内创建目录
+  ipcMain.handle('ensure-dir', async (_event, dirPath) => {
+    try {
+      if (!isPathWithinCourseware(dirPath) && path.resolve(dirPath) !== path.resolve(getCoursewarePath())) {
+        // 允许在 courseware 根目录内创建子目录
+        const cw = path.resolve(getCoursewarePath());
+        if (!path.resolve(dirPath).startsWith(cw + path.sep)) {
+          return { success: false, error: '路径不在课件目录内' };
+        }
+      }
+      fs.mkdirSync(dirPath, { recursive: true });
       return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 删除 courseware 内的文件/文件夹
+  ipcMain.handle('delete-item', async (_event, itemPath) => {
+    try {
+      if (!isPathWithinCourseware(itemPath)) {
+        return { success: false, error: '路径不在课件目录内' };
+      }
+      fs.rmSync(itemPath, { recursive: true, force: true });
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 导入文件/文件夹到 courseware
+  ipcMain.handle('import-files', async (_event, { sources, destDir, preserveStructure }) => {
+    try {
+      const cw = path.resolve(getCoursewarePath());
+      const normalizedDest = path.resolve(destDir);
+      if (!normalizedDest.startsWith(cw)) {
+        return { success: false, error: '目标路径不在课件目录内' };
+      }
+
+      let copied = 0;
+      const errors = [];
+
+      for (const src of sources) {
+        try {
+          const stat = fs.statSync(src);
+          const baseName = path.basename(src);
+          if (stat.isDirectory()) {
+            // 复制整个文件夹
+            const targetDir = preserveStructure
+              ? path.join(normalizedDest, baseName)
+              : normalizedDest;
+            copyDirSync(src, targetDir);
+            copied += countFiles(src);
+          } else {
+            // 复制单个文件
+            const targetPath = path.join(normalizedDest, baseName);
+            fs.copyFileSync(src, targetPath);
+            copied++;
+          }
+        } catch (err) {
+          errors.push(path.basename(src) + ': ' + err.message);
+        }
+      }
+
+      return { success: true, copied, errors: errors.length > 0 ? errors : undefined };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 打开系统文件选择对话框
+  ipcMain.handle('show-open-dialog', async (_event, { type, multi }) => {
+    try {
+      const properties = type === 'folder'
+        ? ['openDirectory']
+        : ['openFile', ...(multi ? ['multiSelections'] : [])];
+      const result = await dialog.showOpenDialog(mainWindow, { properties });
+      if (result.canceled) {
+        return { success: false, canceled: true };
+      }
+      return { success: true, filePaths: result.filePaths };
     } catch (err) {
       return { success: false, error: err.message };
     }
